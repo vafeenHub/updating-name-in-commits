@@ -1,5 +1,9 @@
 #!/bin/bash
 
+BUILD_DIR=./build
+
+mkdir -p $BUILD_DIR
+
 # Проверка аргументов
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <repository-url>"
@@ -10,16 +14,16 @@ fi
 REPO_URL=$1
 REPO_NAME=$(basename "$REPO_URL" .git)
 
-echo "Проверка существующей папки $REPO_NAME..."
-if [ -d "$REPO_NAME" ]; then
-    echo "Папка $REPO_NAME уже существует. Удаляем..."
-    rm -rf "$REPO_NAME"
+echo "Проверка существующей папки $BUILD_DIR/$REPO_NAME..."
+if [ -d "$BUILD_DIR/$REPO_NAME" ]; then
+    echo "Папка $BUILD_DIR/$REPO_NAME уже существует. Удаляем..."
+    rm -rf "$BUILD_DIR/$REPO_NAME"
 fi
 
 echo "Клонирование репозитория $REPO_URL..."
-git clone "$REPO_URL" "$REPO_NAME"
+git clone "$REPO_URL" "$BUILD_DIR/$REPO_NAME"
 
-cd "$REPO_NAME"
+cd "$BUILD_DIR/$REPO_NAME"
 
 echo "Переписывание истории коммитов..."
 
@@ -93,49 +97,11 @@ git for-each-ref --format="%(refname)" refs/original/ | xargs -n 1 git update-re
 git reflog expire --expire=now --all
 git gc --prune=now --aggressive
 
-echo "Проверка результата..."
-echo "=== Статистика ==="
-echo "Всего коммитов: $(git rev-list --all --count)"
-echo "Коммитов где я автор: $(git log --all --author="A" --oneline | wc -l)"
-echo "Коммитов где я коммитер: $(git log --all --committer="A" --oneline | wc -l)"
-echo ""
-echo "=== Проверка подписей ==="
-echo "Примеры подписанных коммитов (где я автор):"
-git log --all --author="A" --pretty=format:"%h - %an | %G? | %s" -5
-echo ""
-echo "Примеры неподписанных коммитов (где не я автор):"
-git log --all --author="A" --invert-grep --pretty=format:"%h - %an | %G? | %s" -5 2>/dev/null || echo "  Все коммиты мои"
-echo ""
-echo "=== Детальная проверка ==="
-echo "Выберите 3 коммита для проверки:"
-echo "1. Коммит где я автор (ожидается подпись):"
-COMMIT_AUTHOR_ME=$(git log --all --author="A" --pretty=format:"%H" -1)
-if [ -n "$COMMIT_AUTHOR_ME" ]; then
-    git show --no-patch --pretty=format:"Хеш: %H%nАвтор: %an <%ae>%nКоммитер: %cn <%ce>%nПодпись: %G?%n" "$COMMIT_AUTHOR_ME"
-    git verify-commit "$COMMIT_AUTHOR_ME" 2>&1 | head -3
-fi
-
-echo ""
-echo "2. Коммит где не я автор (ожидается отсутствие подписи):"
-COMMIT_NOT_ME=$(git log --all --author="A" --invert-grep --pretty=format:"%H" -1 2>/dev/null)
-if [ -n "$COMMIT_NOT_ME" ]; then
-    git show --no-patch --pretty=format:"Хеш: %H%nАвтор: %an <%ae>%nКоммитер: %cn <%ce>%nПодпись: %G?%n" "$COMMIT_NOT_ME"
-    git verify-commit "$COMMIT_NOT_ME" 2>&1 | head -3 || echo "  Не подписан (ожидаемо)"
-fi
-
 echo ""
 echo "Принудительная отправка изменений..."
 git push --force --all
 git push --force --tags
 
-echo ""
-echo "Готово!"
-echo "Изменены только коммиты где автор: vafeen, Vafeen или Albarrasin"
-echo "В этих коммитах:"
-echo "  • Автор изменен на A <666av6@gmail.com>"
-echo "  • Коммитер установлен на A <666av6@gmail.com>"
-echo "  • Коммит подписан GPG подписью"
-echo ""
-echo "Коммиты где автор не я - остались без изменений"
+cd "$BUILD_DIR"
 
-cd ..
+rm -rf "$BUILD_DIR/$REPO_NAME"

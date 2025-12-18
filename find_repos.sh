@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Настройки
-USERNAME="avmiyyLab"  
+USERNAME="vafeenHub"  
 PER_PAGE=100          # Количество репозиториев на странице
 
 # Функция для получения репозиториев через GitHub API
